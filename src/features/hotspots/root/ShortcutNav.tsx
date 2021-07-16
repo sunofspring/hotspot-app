@@ -66,15 +66,19 @@ const ShortcutNav = ({
   const spacing = useSpacing()
   const listRef = useRef<FlatList<Hotspot | Witness | GlobalOpt>>(null)
   const snapPos = useRef<number>(0)
+  const hasFollowHotspotChange = useRef(false)
   const scrollOffset = useRef(0)
-  const [selectedIndex, setSelectedIndex] = useState(2) // Home
+  const [selectedItemData, setSelectedItemData] = useState({
+    index: 2,
+    id: 'home',
+  })
   const hasScrolledToHome = useRef(false)
   const optSize = ITEM_SIZE + spacing[ITEM_MARGIN]
   const prevFollowed = usePrevious(followedHotspots)
   const [sizes, setSizes] = useState(
     GLOBAL_OPTS.reduce(
       (obj, item) => ({ ...obj, [item]: optSize }),
-      {} as Record<string, number>,
+      {} as Record<string, number | null>,
     ),
   )
 
@@ -169,7 +173,7 @@ const ShortcutNav = ({
             offset =
               2.5 * ITEM_SIZE +
               3 * spacing[ITEM_MARGIN] +
-              sizes[item.address] / 2
+              (sizes[item.address] || 0) / 2
           } else {
             let sizeKey = ''
             const prevItem = data[index - 1]
@@ -180,8 +184,8 @@ const ShortcutNav = ({
             }
             offset =
               total[index - 1] +
-              sizes[item.address] / 2 +
-              sizes[sizeKey] / 2 +
+              (sizes[item.address] || 0) / 2 +
+              (sizes[sizeKey] || 0) / 2 +
               spacing[ITEM_MARGIN]
           }
         }
@@ -218,26 +222,56 @@ const ShortcutNav = ({
 
   const handleItemSelected = useCallback(
     (item: GlobalOpt | Hotspot) => {
-      setSelectedIndex(data.indexOf(item))
+      setSelectedItemData({
+        index: data.indexOf(item),
+        id: IS_GLOBAL_OPT(item) ? item : item.address,
+      })
       onItemSelected(item)
     },
     [data, onItemSelected],
   )
 
   useEffect(() => {
+    // if there's a newly followed hotspot, wait for sizes to update then scroll to it
+    if (!hasFollowHotspotChange.current) return
+
+    const allSizesFound = data.every(
+      (d) => !!sizes[IS_GLOBAL_OPT(d) ? d : d.address],
+    )
+    if (!allSizesFound) return
+
+    const nextIndex = data.findIndex((d) => isSelected(d, selectedItem))
+    if (nextIndex === -1) return
+
+    hasFollowHotspotChange.current = false
+    scroll(nextIndex)
+  }, [data, isSelected, scroll, selectedItem, sizes])
+
+  useEffect(() => {
     // TODO: There are some alignment issues when follow/unfollow
     // Need to rethink how to handle this for a future release
     if (prevFollowed && followedHotspots.length !== prevFollowed.length) {
+      // remove this item from the size list
+      if (selectedItemData.index >= GLOBAL_OPTS.length) {
+        let addressToRemove = ''
+        if (selectedItem && !IS_GLOBAL_OPT(selectedItem)) {
+          // if there's a selected item, remove it
+          addressToRemove = selectedItem.address
+        } else {
+          // remove the last known selected item
+          addressToRemove = selectedItemData.id
+        }
+        sizes[addressToRemove] = null
+      }
+
       if (followedHotspots.length < prevFollowed.length) {
         // a hotspot has been unfollowed, snap to nearest pill
-        // TODO: Is this the right behavior?
         const maxIndex = data.length - 1
-        const nextIndex = Math.min(maxIndex, selectedIndex)
+        const nextIndex = Math.min(maxIndex, selectedItemData.index)
         handleItemSelected(data[nextIndex])
-      } else {
-        // TODO: Alignment gets off a little here. Need to find a better solution
-        scroll(data.findIndex((d) => isSelected(d, selectedItem)))
       }
+
+      hasFollowHotspotChange.current = true
     }
   }, [
     data,
@@ -245,9 +279,9 @@ const ShortcutNav = ({
     handleItemSelected,
     isSelected,
     prevFollowed,
-    scroll,
-    selectedIndex,
     selectedItem,
+    selectedItemData,
+    sizes,
   ])
 
   const handlePress = useCallback(
@@ -390,7 +424,7 @@ const ShortcutNav = ({
     const lastItem = data[data.length - 1]
     let lastItemWidth = ITEM_SIZE
     if (!IS_GLOBAL_OPT(lastItem) && sizes[lastItem.address]) {
-      lastItemWidth = sizes[lastItem.address]
+      lastItemWidth = sizes[lastItem.address] || 0
     }
     const paddingEnd = wp(50) - lastItemWidth / 2
     return { paddingStart, paddingEnd }
