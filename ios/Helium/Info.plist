@@ -2,17 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-<key>CFBundleURLTypes</key>
-	<array>
- 	  <dict>
-    	<key>CFBundleTypeRole</key>
-    	<string>Editor</string>
-    	<key>CFBundleURLSchemes</key>
-    	<array>
-      	<string>helium</string>
-    	</array>
-  	</dict>
-	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
@@ -31,41 +20,55 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>helium</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>makerappscheme</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>localhost</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
+			<string></string>
 		</dict>
 	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Allow Helium to use your location to add Hotspots to the network and explore Hotspots around you</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>Allow Helium to authenticate with Face ID</string>
-	<key>UIRequiresFullScreen</key>
-	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Allow Helium to connect to and manage your Hotspots</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Allow Helium to connect to and manage your Hotspots</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Allow Helium to use your location to add your Helium Hotspots to the network</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Allow Helium to use the camera to scan QR codes</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Allow Helium to authenticate with Face ID</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Allow Helium to use your location to add your Helium Hotspots to the network</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Allow Helium to use your location to add Hotspots to the network and explore Hotspots around you</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow Helium to use the microphone</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>ConfigurationIntent</string>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>NotoSerif-Bold.ttf</string>
@@ -101,12 +104,18 @@
 		<string>Inter-ThinItalic.otf</string>
 		<string>Inter-V.ttf</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
 	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

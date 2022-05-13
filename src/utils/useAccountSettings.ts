@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from 'react'
-import useAppState from 'react-native-appstate-hook'
 import { useSelector } from 'react-redux'
 import { useAsync } from 'react-async-hook'
 import accountSlice, {
@@ -8,10 +7,9 @@ import accountSlice, {
 } from '../store/account/accountSlice'
 import { RootState } from '../store/rootReducer'
 import { useAppDispatch } from '../store/store'
-import { updateClient } from './appDataClient'
-import { updateNetwork } from './walletClient'
 import { fetchFeatures } from '../store/features/featuresSlice'
 import { getWalletApiToken } from './secureAccount'
+import { updateClient } from './appDataClient'
 
 const settingsToTransfer = [
   'isFleetModeEnabled',
@@ -36,17 +34,8 @@ export default () => {
   const accountBackedUp = useSelector(
     (state: RootState) => state.app.isBackedUp,
   )
-  const retryCount = useSelector(
-    (state: RootState) => state.features.appRetryCount,
-  )
-  const featuresLoaded = useSelector(
-    (state: RootState) => state.features.featuresLoaded,
-  )
   const fetchFeaturesFailed = useSelector(
     (state: RootState) => state.features.fetchFeaturesFailed,
-  )
-  const proxyEnabled = useSelector(
-    (state: RootState) => state.features.proxyEnabled,
   )
 
   const refreshAccountSettingsAndFeatures = useCallback(async () => {
@@ -68,43 +57,17 @@ export default () => {
     return () => clearInterval(interval)
   }, [dispatch, fetchAccountSettingsFailed, fetchFeaturesFailed])
 
+  // enable proxy after wallet api token is loaded
   useAsync(async () => {
     const token = await getWalletApiToken()
-    updateClient({ networkName: accountSettings.network, retryCount, token })
+    updateClient({ proxyEnabled: true, retryCount: 1, token })
   }, [accountBackedUp])
-
-  useAsync(async () => {
-    if (!accountSettings.network || !accountSettingsLoaded || !featuresLoaded)
-      return
-
-    const token = await getWalletApiToken()
-    updateNetwork(accountSettings.network)
-    updateClient({
-      networkName: accountSettings.network,
-      retryCount,
-      token,
-      proxyEnabled,
-    })
-  }, [
-    accountSettings.network,
-    accountSettingsLoaded,
-    retryCount,
-    featuresLoaded,
-  ])
 
   useAsync(async () => {
     if (!accountBackedUp) return
 
     await refreshAccountSettingsAndFeatures()
   }, [accountBackedUp, refreshAccountSettingsAndFeatures])
-
-  useAppState({
-    onForeground: async () => {
-      if (accountBackedUp) {
-        await refreshAccountSettingsAndFeatures()
-      }
-    },
-  })
 
   useEffect(() => {
     if (!accountSettingsLoaded || transferRequired !== undefined) return

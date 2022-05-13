@@ -3,7 +3,12 @@ import React, { useEffect, useState, memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder'
-import Balance, { CurrencyType } from '@helium/currency'
+import Balance, { CurrencyType, NetworkTokens } from '@helium/currency'
+import { addMinutes, startOfYesterday } from 'date-fns'
+import { useAsync } from 'react-async-hook'
+import SharedGroupPreferences from 'react-native-shared-group-preferences'
+import { Platform } from 'react-native'
+import { getWalletApiToken } from '../../../utils/secureAccount'
 import Box from '../../../components/Box'
 import EmojiBlip from '../../../components/EmojiBlip'
 import Text from '../../../components/Text'
@@ -13,7 +18,9 @@ import HotspotsTicker from './HotspotsTicker'
 import animateTransition from '../../../utils/animateTransition'
 import { CacheRecord } from '../../../utils/cacheUtils'
 import { AccountReward } from '../../../store/account/accountSlice'
+import DateModule from '../../../utils/DateModule'
 
+const widgetGroup = 'group.com.helium.mobile.wallet.widget'
 const TimeOfDayTitle = ({ date }: { date: Date }) => {
   const { t } = useTranslation()
   const hours = date.getHours()
@@ -46,7 +53,7 @@ const WelcomeOverview = ({ accountRewards }: Props) => {
     validatorsLoaded: false,
   })
   const hotspots = useSelector(
-    (state: RootState) => state.hotspots.hotspots,
+    (state: RootState) => state.hotspots.hotspots.data,
     isEqual,
   )
 
@@ -75,6 +82,58 @@ const WelcomeOverview = ({ accountRewards }: Props) => {
   const validatorsLoading = useSelector(
     (state: RootState) => state.validators.validators.loading,
   )
+
+  const accountAddress = useSelector(
+    (state: RootState) => state.account.account?.address,
+  )
+
+  const hotspotRewards = useSelector(
+    (state: RootState) => state.hotspots.rewards || {},
+  )
+
+  const currentOraclePrice = useSelector(
+    (state: RootState) => state.heliumData.currentOraclePrice,
+  )
+
+  // Hook that is used for helium balance widget.
+  useAsync(async () => {
+    if (Platform.OS === 'ios') {
+      const token = await getWalletApiToken()
+      const oraclePrice = currentOraclePrice?.price
+      const floatBalance = oraclePrice?.floatBalance
+
+      await SharedGroupPreferences.setItem(
+        'myBalanceWidgetKey',
+        {
+          hntPrice: floatBalance,
+          token,
+          accountAddress,
+        },
+        widgetGroup,
+      )
+    }
+  }, [currentOraclePrice, accountAddress])
+
+  // Hook that is used for helium hotspots widget.
+  useAsync(async () => {
+    if (Platform.OS === 'ios') {
+      const token = await getWalletApiToken()
+      const rewards: { address: string; reward: Balance<NetworkTokens> }[] = []
+      Object.keys(hotspotRewards).forEach((address) => {
+        const reward = hotspotRewards[address]
+        const rewardObj = {
+          address,
+          reward,
+        }
+        rewards.push(rewardObj)
+      })
+      await SharedGroupPreferences.setItem(
+        'myHotspotsWidgetKey',
+        { hotspots, rewards, token, accountAddress },
+        widgetGroup,
+      )
+    }
+  }, [hotspots, hotspotRewards, accountAddress])
 
   useEffect(() => {
     if (hotspotsLoaded && validatorsLoaded) return
@@ -108,28 +167,37 @@ const WelcomeOverview = ({ accountRewards }: Props) => {
     const validatorCount = validators.length
     const hotspotCount = visibleHotspots.length
     let nextBodyText = ''
+    const yesterday = startOfYesterday()
+    const utcOffset = yesterday.getTimezoneOffset()
+    const offsetDate = addMinutes(yesterday, utcOffset)
+    const date = await DateModule.formatDate(offsetDate.toISOString(), 'MMM d')
     if (validatorCount === 0) {
       nextBodyText = t('hotspots.owned.reward_hotspot_summary', {
         count: hotspotCount,
         hntAmount,
+        date,
       })
     } else if (hotspotCount === 0 && validatorCount > 0) {
       nextBodyText = t('hotspots.owned.reward_validator_summary', {
         count: validatorCount,
         hntAmount,
+        date,
       })
     } else {
       const validator = t('hotspots.owned.validator', {
         count: validatorCount,
+        date,
       })
       const hotspot = t('hotspots.owned.hotspot', {
         count: hotspotCount,
+        date,
       })
 
       nextBodyText = t('hotspots.owned.reward_hotspot_and_validator_summary', {
         hotspot,
         validator,
         hntAmount,
+        date,
       })
     }
     setBodyText(nextBodyText)
@@ -167,6 +235,7 @@ const WelcomeOverview = ({ accountRewards }: Props) => {
             lineHeight={24}
             textAlign="center"
             color="black"
+            maxFontSizeMultiplier={1.2}
             onPress={toggleConvertHntToCurrency}
           >
             {bodyText}
